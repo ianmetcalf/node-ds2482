@@ -1,0 +1,26 @@
+{
+  "name": "ds2482",
+  "version": "0.0.0",
+  "description": "Provides an interface for the dallas ds2482 onewire bridge",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/ianmetcalf/node-ds2482.git"
+  },
+  "keywords": [
+    "ds2482",
+    "onewire"
+  ],
+  "author": "Ian Metcalf",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ianmetcalf/node-ds2482/issues"
+  },
+  "homepage": "https://github.com/ianmetcalf/node-ds2482",
+  "dependencies": {
+    "i2c": "^0.1.4"
+  }
+}
