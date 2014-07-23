@@ -1,4 +1,5 @@
-var I2c = require('i2c');
+var I2c = require('i2c'),
+  cmds = require('./commands');
 
 var DS2482 = function(address, options) {
   options = options || {};
