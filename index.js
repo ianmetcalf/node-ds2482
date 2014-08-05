@@ -69,7 +69,7 @@ DS2482.prototype.reset = function(callback) {
         if (resp & cmds.STATUS.SHORT) {
           callback(new Error('Detected onewire short'));
 
-        } else if (resp & cmds.STATUS.PRESENCE === 0) {
+        } else if ((resp & cmds.STATUS.PRESENCE) === 0) {
           callback(new Error('Failed to detected any onewire devices'));
 
         } else {
@@ -166,7 +166,7 @@ DS2482.prototype.wait = function(setPointer, callback) {
   function check(err, resp) {
     if (err) { return callback(err); }
 
-    if (resp & cmds.STATUS.BUSY === 0) {
+    if ((resp & cmds.STATUS.BUSY) === 0) {
       callback(null, resp);
 
     } else if (Date.now() - start < 20) {
