@@ -14,47 +14,7 @@ DS2482.prototype.init = function(callback) {
   this.resetBridge(callback);
 };
 
-DS2482.prototype.resetBridge = function(callback) {
-  var that = this;
-
-  this.i2c.writeByte(cmds.DEVICE_RESET, function(err) {
-    if (err) { return callback(err); }
-
-    that.wait(false, function(err, resp) {
-      if (err) { return callback(err); }
-
-      that.channel = 0;
-
-      callback(null, resp);
-    });
-  });
-};
-
-DS2482.prototype.configureBridge = function(config, callback) {
-  var data = ((~config & 0x0F) << 4) | (config & 0x0F),
-    that = this;
-
-  this.wait(true, function(err) {
-    if (err) { return callback(err); }
-
-    that.i2c.writeBytes(cmds.WRITE_CONFIG, [data], function(err) {
-      if (err) { return callback(err); }
-
-      that.i2c.readByte(function(err, resp) {
-        if (err) { return callback(err); }
-
-        if (resp !== config) {
-          callback(new Error('Failed to configure bridge'));
-
-        } else {
-          callback(null, resp);
-        }
-      });
-    });
-  });
-};
-
-DS2482.prototype.reset = function(callback) {
+DS2482.prototype.resetWire = function(callback) {
   var that = this;
 
   this.wait(true, function(err) {
@@ -80,7 +40,7 @@ DS2482.prototype.reset = function(callback) {
   });
 };
 
-DS2482.prototype.write = function(data, callback) {
+DS2482.prototype.writeByte = function(data, callback) {
   var that = this;
 
   this.wait(true, function(err) {
@@ -94,7 +54,7 @@ DS2482.prototype.write = function(data, callback) {
   });
 };
 
-DS2482.prototype.read = function(callback) {
+DS2482.prototype.readByte = function(callback) {
   var that = this;
 
   this.wait(true, function(err) {
@@ -106,7 +66,7 @@ DS2482.prototype.read = function(callback) {
       that.wait(false, function(err) {
         if (err) { return callback(err); }
 
-        that.readRegister(cmds.REGISTERS.DATA, callback);
+        that.readBridge(cmds.REGISTERS.DATA, callback);
       });
     });
   });
@@ -154,6 +114,66 @@ DS2482.prototype.triplet = function(direction, callback) {
   });
 };
 
+DS2482.prototype.resetBridge = function(callback) {
+  var that = this;
+
+  this.i2c.writeByte(cmds.DEVICE_RESET, function(err) {
+    if (err) { return callback(err); }
+
+    that.wait(false, function(err, resp) {
+      if (err) { return callback(err); }
+
+      that.channel = 0;
+
+      callback(null, resp);
+    });
+  });
+};
+
+DS2482.prototype.configureBridge = function(config, callback) {
+  var data = ((~config & 0x0F) << 4) | (config & 0x0F),
+    that = this;
+
+  this.wait(true, function(err) {
+    if (err) { return callback(err); }
+
+    that.i2c.writeBytes(cmds.WRITE_CONFIG, [data], function(err) {
+      if (err) { return callback(err); }
+
+      that.i2c.readByte(function(err, resp) {
+        if (err) { return callback(err); }
+
+        if (resp !== config) {
+          callback(new Error('Failed to configure bridge'));
+
+        } else {
+          callback(null, resp);
+        }
+      });
+    });
+  });
+};
+
+DS2482.prototype.readBridge = function(reg, callback) {
+  var that = this;
+
+  if (typeof reg === 'function') {
+    callback = reg;
+    reg = null;
+  }
+
+  if (reg) {
+    this.i2c.writeBytes(cmds.SET_READ_POINTER, [reg], function(err) {
+      if (err) { return callback(err); }
+
+      that.i2c.readByte(callback);
+    });
+
+  } else {
+    this.i2c.readByte(callback);
+  }
+};
+
 DS2482.prototype.wait = function(setPointer, callback) {
   var start = Date.now(),
     that = this;
@@ -171,7 +191,7 @@ DS2482.prototype.wait = function(setPointer, callback) {
 
     } else if (Date.now() - start < 20) {
       setTimeout(function() {
-        that.readRegister(check);
+        that.readBridge(check);
       }, 0);
 
     } else {
@@ -179,28 +199,7 @@ DS2482.prototype.wait = function(setPointer, callback) {
     }
   }
 
-  this.readRegister(setPointer ? cmds.REGISTERS.STATUS : null, check);
-};
-
-DS2482.prototype.readRegister = function(reg, callback) {
-  var that = this;
-
-  if (typeof reg === 'function') {
-    callback = reg;
-    reg = null;
-  }
-
-  // If a register is given then set the pointer before reading
-  if (reg) {
-    this.i2c.writeBytes(cmds.SET_READ_POINTER, [reg], function(err) {
-      if (err) { return callback(err); }
-
-      that.i2c.readByte(callback);
-    });
-
-  } else {
-    this.i2c.readByte(callback);
-  }
+  this.readBridge(setPointer ? cmds.REGISTERS.STATUS : null, check);
 };
 
 module.exports = DS2482;
