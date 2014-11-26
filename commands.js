@@ -256,3 +256,54 @@ exports.ONE_WIRE_READ_BYTE = 0x96;
  */
 
 exports.ONE_WIRE_TRIPLET = 0x78;
+
+
+
+/*
+ * Command: Search ROM
+ * Description: When a system is initially powered up, the master must identify the ROM
+ *   codes of all slave devices on the bus, which allows the master to determine the number
+ *   of slaves and their device types. The master learns the ROM codes through a process of
+ *   elimination that requires the master to perform a Search ROM cycle (i.e., Search ROM
+ *   command followed by data exchange) as many times as necessary to identify all of the
+ *   slave devices. If there is only one slave on the bus, the simpler Read ROM command
+ *   (see below) can be used in place of the Search ROM process.
+ */
+
+exports.ONE_WIRE_SEARCH_ROM = 0xF0;
+
+
+
+/*
+ * Command: Read ROM
+ * Description: This command can only be used when there is one slave on the bus. It allows
+ *   the bus master to read the slave’s 64-bit ROM code without using the Search ROM
+ *   procedure. If this command is used when there is more than one slave present on the bus,
+ *   a data collision will occur when all the slaves attempt to respond at the same time.
+ */
+
+exports.ONE_WIRE_READ_ROM = 0x33;
+
+
+
+/*
+ * Command: Match ROM
+ * Description: The match ROM command followed by a 64-bit ROM code sequence allows the bus
+ *   master to address a specific slave device on a multidrop or single-drop bus. Only the
+ *   slave that exactly matches the 64-bit ROM code sequence will respond to the function
+ *   command issued by the master; all other slaves on the bus will wait for a reset pulse.
+ */
+
+exports.ONE_WIRE_MATCH_ROM = 0x55;
+
+
+
+/*
+ * Command: Skip ROM
+ * Description: The master can use this command to address all devices on the bus
+ *   simultaneously without sending out any ROM code information. If more than one slave
+ *   is present on the bus and, for example, a read command is issued following the Skip
+ *   ROM command, data collision occurs on the bus as multiple slaves transmit simultaneously.
+ */
+
+exports.ONE_WIRE_SKIP_ROM = 0xCC;

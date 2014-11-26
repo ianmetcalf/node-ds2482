@@ -14,10 +14,179 @@ DS2482.prototype.init =
 DS2482.prototype.reset = function(callback) {
   var that = this;
 
+  this.lastFound = null;
+  this.lastConflict = 0;
+
   this.resetBridge(function(err) {
     if (err) { return callback(err); }
 
     that.resetWire(callback);
+  });
+};
+
+function updateCRC(crc, data) {
+  crc = crc ^ data;
+
+  for (var i = 0; i < 8; i++) {
+    if (crc & 0x01) {
+      crc = (crc >> 1) ^ 0x8C;
+    } else {
+      crc >>= 1;
+    }
+  }
+
+  return crc;
+}
+
+DS2482.prototype.searchROM = function(callback) {
+  var rom = new Buffer(8),
+    crc = 0,
+    that = this;
+
+  this.resetWire(function(err) {
+    if (err) { return callback(err); }
+
+    that.writeByte(cmds.ONE_WIRE_SEARCH_ROM, function(err) {
+      if (err) { return callback(err); }
+
+      function search(offset, mask, bit, conflict) {
+        var part = rom.readUInt8(offset),
+          sbr, tsb, dir;
+
+        if (that.lastFound && bit < that.lastConflict) {
+          dir = (that.lastFound.readUInt8(offset) & mask);
+
+        } else if (bit === that.lastConflict) {
+          dir = 1;
+
+        } else {
+          dir = 0;
+        }
+
+        that.triplet(dir, function(err, resp) {
+          if (err) { return callback(err); }
+
+          sbr = (resp & cmds.STATUS.SINGLE_BIT);
+          tsb = (resp & cmds.STATUS.TRIPLE_BIT);
+          dir = (resp & cmds.STATUS.BRANCH_DIR);
+
+          if (sbr && tsb) {
+            return callback(new Error('Bad search result'));
+          }
+
+          if (!sbr && !tsb && !dir) {
+            conflict = bit;
+          }
+
+          part = dir ? part | mask : part & ~mask;
+          rom.writeUInt8(part, offset);
+          mask = mask << 1;
+
+          if (mask > 128) {
+            crc = updateCRC(crc, part);
+            offset += 1;
+            mask = 0x01;
+          }
+
+          if (offset < rom.length) {
+            search(offset, mask, bit + 1, conflict);
+
+          } else if (crc !== 0 || rom[0] === 0) {
+            callback(new Error('CRC mismatch'));
+
+          } else {
+            that.lastFound = rom;
+            that.lastConflict = conflict;
+            callback(null, rom.toString('hex'));
+          }
+        });
+      }
+
+      search(0, 0x01, 0, 0);
+    });
+  });
+};
+
+DS2482.prototype.readROM = function(callback) {
+  var rom = new Buffer(8),
+    crc = 0,
+    that = this;
+
+  this.resetWire(function(err) {
+    if (err) { return callback(err); }
+
+    that.writeByte(cmds.ONE_WIRE_READ_ROM, function(err) {
+      if (err) { return callback(err); }
+
+      function read(offset) {
+        that.readByte(function(err, resp) {
+          if (err) { return callback(err); }
+
+          rom.writeUInt8(resp, offset);
+          crc = updateCRC(crc, resp);
+          offset += 1;
+
+          if (offset < rom.length) {
+            read(offset);
+
+          } else if (crc !== 0 || rom[0] === 0) {
+            callback(new Error('CRC mismatch'));
+
+          } else {
+            callback(null, rom.toString('hex'));
+          }
+        });
+      }
+
+      read(0);
+    });
+  });
+};
+
+DS2482.prototype.matchROM = function(rom, callback) {
+  var that = this;
+
+  if (typeof rom === 'string') {
+    rom = new Buffer(rom, 'hex');
+  }
+
+  if (rom.length !== 8) {
+    return callback(new Error('Invalid ROM'));
+  }
+
+  this.resetWire(function(err) {
+    if (err) { return callback(err); }
+
+    that.writeByte(cmds.ONE_WIRE_MATCH_ROM, function(err) {
+      if (err) { return callback(err); }
+
+      function write(offset) {
+        that.writeByte(rom.readUInt8(offset), function(err, resp) {
+          if (err) { return callback(err); }
+
+          offset += 1;
+
+          if (offset < rom.length) {
+            write(offset);
+
+          } else {
+            callback(null, resp);
+          }
+        });
+      }
+
+      write(0);
+    });
+  });
+};
+
+DS2482.prototype.skipROM = function(callback) {
+  var that = this;
+
+  this.resetWire(function(err) {
+    if (err) { return callback(err); }
+
+    that.writeByte(cmds.ONE_WIRE_SKIP_ROM, callback);
   });
 };
 
