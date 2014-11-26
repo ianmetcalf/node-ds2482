@@ -147,7 +147,7 @@ DS2482.prototype.configureBridge = function(config, callback) {
     that.i2c.writeBytes(cmds.WRITE_CONFIG, [data], function(err) {
       if (err) { return callback(err); }
 
-      that.i2c.readByte(function(err, resp) {
+      that.readBridge(function(err, resp) {
         if (err) { return callback(err); }
 
         if (resp !== config) {
@@ -169,15 +169,21 @@ DS2482.prototype.readBridge = function(reg, callback) {
     reg = null;
   }
 
+  function read(err, resp) {
+    if (err) { return callback(err); }
+
+    callback(null, (resp >>> 0) & 0xFF);
+  }
+
   if (reg) {
     this.i2c.writeBytes(cmds.SET_READ_POINTER, [reg], function(err) {
       if (err) { return callback(err); }
 
-      that.i2c.readByte(callback);
+      that.i2c.readByte(read);
     });
 
   } else {
-    this.i2c.readByte(callback);
+    this.i2c.readByte(read);
   }
 };
 
