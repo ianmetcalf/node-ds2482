@@ -10,8 +10,15 @@ var DS2482 = function(address, options) {
   });
 };
 
-DS2482.prototype.init = function(callback) {
-  this.resetBridge(callback);
+DS2482.prototype.init =
+DS2482.prototype.reset = function(callback) {
+  var that = this;
+
+  this.resetBridge(function(err) {
+    if (err) { return callback(err); }
+
+    that.resetWire(callback);
+  });
 };
 
 DS2482.prototype.resetWire = function(callback) {
