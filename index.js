@@ -24,6 +24,61 @@ DS2482.prototype.reset = function(callback) {
   });
 };
 
+DS2482.prototype.search = function(callback) {
+  var that = this;
+
+  this.lastFound = null;
+  this.lastConflict = 0;
+
+  function next(memo) {
+    that.searchROM(function(err, resp) {
+      if (err) { return callback(err); }
+
+      memo = memo.concat(resp);
+
+      if (that.lastConflict) {
+        next(memo);
+
+      } else {
+        callback(null, memo);
+      }
+    });
+  }
+
+  next([]);
+};
+
+DS2482.prototype.searchByFamily = function(family, callback) {
+  var that = this;
+
+  if (typeof family === 'string') {
+    family = parseInt(family, 16);
+  }
+
+  this.lastFound = new Buffer([family, 0, 0, 0, 0, 0, 0, 0]);
+  this.lastConflict = 64;
+
+  function next(memo) {
+    that.searchROM(function(err, resp) {
+      if (err) { return callback(err); }
+
+      if (that.lastFound.readUInt8(0) === family) {
+        memo = memo.concat(resp);
+      }
+
+      if (that.lastConflict > 7 && memo.length) {
+        next(memo);
+
+      } else {
+        that.lastConflict = 0;
+        callback(null, memo);
+      }
+    });
+  }
+
+  next([]);
+};
+
 function updateCRC(crc, data) {
   crc = crc ^ data;
 
