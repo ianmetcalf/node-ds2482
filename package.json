@@ -1,6 +1,6 @@
 {
   "name": "ds2482",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Provides an interface for the dallas ds2482 onewire bridge",
   "main": "index.js",
   "scripts": {
