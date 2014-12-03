@@ -24,6 +24,23 @@ DS2482.prototype.reset = function(callback) {
   });
 };
 
+DS2482.prototype.sendCommand = function(cmd, rom, callback) {
+  var that = this;
+
+  if (typeof rom === 'function') {
+    callback = rom;
+    rom = null;
+  }
+
+  function send(err) {
+    if (err) { return callback(err); }
+
+    that.writeByte(cmd, callback);
+  };
+
+  rom ? this.matchROM(rom, send) : this.skipROM(send);
+};
+
 DS2482.prototype.search = function(callback) {
   var that = this;
 

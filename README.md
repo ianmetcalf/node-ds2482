@@ -41,6 +41,12 @@ _Alias:_ `bridge.reset`
 
 Resets the bridge chip and any onewire devices connected to it
 
+### bridge.sendCommand(command [, rom], callback)
+Sends a command to a onewire device if specified or all onewire devices if omitted
+
+- `command` the command to send as an unsigned integer
+- `rom` the ROM address of the device to send the command to as a 16 character hex encoded string
+
 ### bridge.search(callback)
 Searches the bus for all onewire devices and returns a list of ROM addresses as hex encoded strings
 
