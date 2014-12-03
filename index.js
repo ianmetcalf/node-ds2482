@@ -1,6 +1,8 @@
 var I2c = require('i2c'),
   cmds = require('./commands');
 
+
+
 var DS2482 = function(options) {
   options = options || {};
 
@@ -9,6 +11,12 @@ var DS2482 = function(options) {
   });
 };
 
+
+
+/*
+ * Main API
+ */
+
 DS2482.prototype.init =
 DS2482.prototype.reset = function(callback) {
   var that = this;
@@ -16,10 +24,10 @@ DS2482.prototype.reset = function(callback) {
   this.lastFound = null;
   this.lastConflict = 0;
 
-  this.resetBridge(function(err) {
+  this._resetBridge(function(err) {
     if (err) { return callback(err); }
 
-    that.resetWire(callback);
+    that._resetWire(callback);
   });
 };
 
@@ -95,6 +103,12 @@ DS2482.prototype.searchByFamily = function(family, callback) {
   next([]);
 };
 
+
+
+/*
+ * Onewire ROM API
+ */
+
 function updateCRC(crc, data) {
   crc = crc ^ data;
 
@@ -114,7 +128,7 @@ DS2482.prototype.searchROM = function(callback) {
     crc = 0,
     that = this;
 
-  this.resetWire(function(err) {
+  this._resetWire(function(err) {
     if (err) { return callback(err); }
 
     that.writeByte(cmds.ONE_WIRE_SEARCH_ROM, function(err) {
@@ -183,7 +197,7 @@ DS2482.prototype.readROM = function(callback) {
     crc = 0,
     that = this;
 
-  this.resetWire(function(err) {
+  this._resetWire(function(err) {
     if (err) { return callback(err); }
 
     that.writeByte(cmds.ONE_WIRE_READ_ROM, function(err) {
@@ -225,7 +239,7 @@ DS2482.prototype.matchROM = function(rom, callback) {
     return callback(new Error('Invalid ROM'));
   }
 
-  this.resetWire(function(err) {
+  this._resetWire(function(err) {
     if (err) { return callback(err); }
 
     that.writeByte(cmds.ONE_WIRE_MATCH_ROM, function(err) {
@@ -254,49 +268,29 @@ DS2482.prototype.matchROM = function(rom, callback) {
 DS2482.prototype.skipROM = function(callback) {
   var that = this;
 
-  this.resetWire(function(err) {
+  this._resetWire(function(err) {
     if (err) { return callback(err); }
 
     that.writeByte(cmds.ONE_WIRE_SKIP_ROM, callback);
   });
 };
 
-DS2482.prototype.resetWire = function(callback) {
-  var that = this;
 
-  this.wait(true, function(err) {
-    if (err) { return callback(err); }
 
-    that.i2c.writeByte(cmds.ONE_WIRE_RESET, function(err) {
-      if (err) { return callback(err); }
-
-      that.wait(false, function(err, resp) {
-        if (err) { return callback(err); }
-
-        if (resp & cmds.STATUS.SHORT) {
-          callback(new Error('Detected onewire short'));
-
-        } else if ((resp & cmds.STATUS.PRESENCE) === 0) {
-          callback(new Error('Failed to detected any onewire devices'));
-
-        } else {
-          callback(null, resp);
-        }
-      });
-    });
-  });
-};
+/*
+ * Onewire read/write API
+ */
 
 DS2482.prototype.writeByte = function(data, callback) {
   var that = this;
 
-  this.wait(true, function(err) {
+  this._wait(true, function(err) {
     if (err) { return callback(err); }
 
     that.i2c.writeBytes(cmds.ONE_WIRE_WRITE_BYTE, [data], function(err) {
       if (err) { return callback(err); }
 
-      that.wait(false, callback);
+      that._wait(false, callback);
     });
   });
 };
@@ -304,16 +298,16 @@ DS2482.prototype.writeByte = function(data, callback) {
 DS2482.prototype.readByte = function(callback) {
   var that = this;
 
-  this.wait(true, function(err) {
+  this._wait(true, function(err) {
     if (err) { return callback(err); }
 
     that.i2c.writeByte(cmds.ONE_WIRE_READ_BYTE, function(err) {
       if (err) { return callback(err); }
 
-      that.wait(false, function(err) {
+      that._wait(false, function(err) {
         if (err) { return callback(err); }
 
-        that.readBridge(cmds.REGISTERS.DATA, callback);
+        that._readBridge(cmds.REGISTERS.DATA, callback);
       });
     });
   });
@@ -327,13 +321,13 @@ DS2482.prototype.bit = function(setHigh, callback) {
     setHigh = true;
   }
 
-  this.wait(true, function(err) {
+  this._wait(true, function(err) {
     if (err) { return callback(err); }
 
     that.i2c.writeBytes(cmds.ONE_WIRE_SINGLE_BIT, [setHigh ? 0x80 : 0], function(err) {
       if (err) { return callback(err); }
 
-      that.wait(false, function(err, resp) {
+      that._wait(false, function(err, resp) {
         if (err) { return callback(err); }
 
         callback(null, resp & cmds.STATUS.SINGLE_BIT ? 1 : 0);
@@ -350,29 +344,13 @@ DS2482.prototype.triplet = function(direction, callback) {
     direction = 0;
   }
 
-  this.wait(true, function(err) {
+  this._wait(true, function(err) {
     if (err) { return callback(err); }
 
     that.i2c.writeBytes(cmds.ONE_WIRE_TRIPLET, [direction ? 0x80 : 0], function(err) {
       if (err) { return callback(err); }
 
-      that.wait(false, callback);
-    });
-  });
-};
-
-DS2482.prototype.resetBridge = function(callback) {
-  var that = this;
-
-  this.i2c.writeByte(cmds.DEVICE_RESET, function(err) {
-    if (err) { return callback(err); }
-
-    that.wait(false, function(err, resp) {
-      if (err) { return callback(err); }
-
-      that.channel = 0;
-
-      callback(null, resp);
+      that._wait(false, callback);
     });
   });
 };
@@ -381,13 +359,13 @@ DS2482.prototype.configureBridge = function(config, callback) {
   var data = ((~config & 0x0F) << 4) | (config & 0x0F),
     that = this;
 
-  this.wait(true, function(err) {
+  this._wait(true, function(err) {
     if (err) { return callback(err); }
 
     that.i2c.writeBytes(cmds.WRITE_CONFIG, [data], function(err) {
       if (err) { return callback(err); }
 
-      that.readBridge(function(err, resp) {
+      that._readBridge(function(err, resp) {
         if (err) { return callback(err); }
 
         if (resp !== config) {
@@ -401,7 +379,83 @@ DS2482.prototype.configureBridge = function(config, callback) {
   });
 };
 
-DS2482.prototype.readBridge = function(reg, callback) {
+
+
+/*
+ * Private
+ */
+
+DS2482.prototype._resetBridge = function(callback) {
+  var that = this;
+
+  this.i2c.writeByte(cmds.DEVICE_RESET, function(err) {
+    if (err) { return callback(err); }
+
+    that._wait(false, function(err, resp) {
+      if (err) { return callback(err); }
+
+      that.channel = 0;
+
+      callback(null, resp);
+    });
+  });
+};
+
+DS2482.prototype._resetWire = function(callback) {
+  var that = this;
+
+  this._wait(true, function(err) {
+    if (err) { return callback(err); }
+
+    that.i2c.writeByte(cmds.ONE_WIRE_RESET, function(err) {
+      if (err) { return callback(err); }
+
+      that._wait(false, function(err, resp) {
+        if (err) { return callback(err); }
+
+        if (resp & cmds.STATUS.SHORT) {
+          callback(new Error('Detected onewire short'));
+
+        } else if ((resp & cmds.STATUS.PRESENCE) === 0) {
+          callback(new Error('Failed to detected any onewire devices'));
+
+        } else {
+          callback(null, resp);
+        }
+      });
+    });
+  });
+};
+
+DS2482.prototype._wait = function(setPointer, callback) {
+  var start = Date.now(),
+    that = this;
+
+  if (typeof setPointer === 'function') {
+    callback = setPointer;
+    setPointer = true;
+  }
+
+  function check(err, resp) {
+    if (err) { return callback(err); }
+
+    if ((resp & cmds.STATUS.BUSY) === 0) {
+      callback(null, resp);
+
+    } else if (Date.now() - start < 20) {
+      setTimeout(function() {
+        that._readBridge(check);
+      }, 0);
+
+    } else {
+      callback(new Error('Timeout'));
+    }
+  }
+
+  this._readBridge(setPointer ? cmds.REGISTERS.STATUS : null, check);
+};
+
+DS2482.prototype._readBridge = function(reg, callback) {
   var that = this;
 
   if (typeof reg === 'function') {
@@ -425,34 +479,6 @@ DS2482.prototype.readBridge = function(reg, callback) {
   } else {
     this.i2c.readByte(read);
   }
-};
-
-DS2482.prototype.wait = function(setPointer, callback) {
-  var start = Date.now(),
-    that = this;
-
-  if (typeof setPointer === 'function') {
-    callback = setPointer;
-    setPointer = true;
-  }
-
-  function check(err, resp) {
-    if (err) { return callback(err); }
-
-    if ((resp & cmds.STATUS.BUSY) === 0) {
-      callback(null, resp);
-
-    } else if (Date.now() - start < 20) {
-      setTimeout(function() {
-        that.readBridge(check);
-      }, 0);
-
-    } else {
-      callback(new Error('Timeout'));
-    }
-  }
-
-  this.readBridge(setPointer ? cmds.REGISTERS.STATUS : null, check);
 };
 
 module.exports = DS2482;
