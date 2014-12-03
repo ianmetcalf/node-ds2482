@@ -17,10 +17,10 @@ var bridge = new DS2482();
 
 bridge.init(function(err) {
   if (err) { throw err; }
-  
+
   bridge.search(function(err, resp) {
     if (err) { throw err; }
-    
+
     console.log(resp); // Returns a list of ROM addresses as hex encoded strings
   });
 });
@@ -28,12 +28,12 @@ bridge.init(function(err) {
 
 # API
 
-### new DS2482(address, [options])
+### new DS2482([options])
 Creates an interface for a Dallas DS2482 i2c to onewire bridge chip
 
-* `address` the i2c address of the bridge chip, default: `0x18`
-* `options.device` the location of the i2c interface, default: `/dev/i2c-1`
-* `options.debug` toggle i2c debug mode, default: `false`
+- `options.address` the i2c address of the bridge chip, default: `0x18`
+- `options.device` the location of the i2c interface, default: `/dev/i2c-1`
+- `options.debug` toggle i2c debug mode, default: `false`
 
 ### bridge.init(callback)
 
@@ -55,7 +55,7 @@ Searches the bus for all onewire devices and returns a list of ROM addresses as 
 ### bridge.searchByFamily(family, callback)
 Searches the bus for all onewire devices of a particular family and returns a list of ROM addresses as hex encoded strings
 
-* `family` the family to search as either an unsigned integer or 2 character hex encoded string
+- `family` the family to search as either an unsigned integer or 2 character hex encoded string
 
 ```js
 [
@@ -79,7 +79,7 @@ __NOTE:__ Will return a `CRC mismatch` error if multiple devices are on the bus
 ### bridge.matchROM(rom, callback)
 Selects a single onewire device to send a command to
 
-* `rom` the ROM address of the device to select as a 16 character hex encoded string
+- `rom` the ROM address of the device to select as a 16 character hex encoded string
 
 ### bridge.skipROM(callback)
 Selects all onewire devices to send a command to
