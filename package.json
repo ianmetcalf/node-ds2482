@@ -1,14 +1,14 @@
 {
   "name": "ds2482",
   "version": "0.1.0",
-  "description": "Provides an interface for the dallas ds2482 onewire bridge",
+  "description": "Provides an interface for the Dallas DS2482 onewire bridge",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/ianmetcalf/node-ds2482.git"
+    "url": "https://github.com/ianmetcalf/node-ds2482.git"
   },
   "keywords": [
     "ds2482",
