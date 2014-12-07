@@ -4,9 +4,8 @@ var I2c = require('i2c'),
 var DS2482 = function(options) {
   options = options || {};
 
-  this.i2c = new I2c(0x18 | (options.address & 0x03), {
-    device: options.device || '/dev/i2c-1',
-    debug: options.debug || false
+  this.i2c = options.i2c || new I2c(0x18 | (options.address & 0x03), {
+    device: options.device || '/dev/i2c-1'
   });
 };
 

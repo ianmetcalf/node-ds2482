@@ -33,7 +33,6 @@ Creates an interface for a Dallas DS2482 i2c to onewire bridge chip
 
 - `options.address` the i2c address of the bridge chip, default: `0x18`
 - `options.device` the location of the i2c interface, default: `/dev/i2c-1`
-- `options.debug` toggle i2c debug mode, default: `false`
 
 ### bridge.init(callback)
 
