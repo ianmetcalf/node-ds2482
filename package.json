@@ -21,6 +21,6 @@
   },
   "homepage": "https://github.com/ianmetcalf/node-ds2482",
   "dependencies": {
-    "i2c": "^0.1.4"
+    "i2c": "^0.1.6"
   }
 }
