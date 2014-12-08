@@ -28,6 +28,11 @@ wire.init(function(err) {
 
 # API
 
+### DS2482.checkCRC(buffer)
+Checks that the crc in the last byte matches the rest of the buffer
+
+- `buffer` the data buffer to be checked
+
 ### new DS2482([options])
 Creates an interface for a Dallas DS2482 i2c to onewire bridge chip
 
@@ -90,3 +95,13 @@ Selects a single onewire device to send a command to
 Selects all onewire devices to send a command to
 
 __NOTE:__ Can only be used for commands that don't return a response
+
+### wire.writeData(data, callback)
+Writes one or more bytes to the onewire bus
+
+- `data` a single byte, array of bytes or data buffer to be written out
+
+### wire.readData(size, callback)
+Reads one or more bytes from the onewire bus and returns a data buffer
+
+- `size` number of bytes to be read in

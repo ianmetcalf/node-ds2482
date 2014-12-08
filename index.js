@@ -42,7 +42,7 @@ DS2482.prototype.sendCommand = function(cmd, rom, callback) {
   function send(err) {
     if (err) { return callback(err); }
 
-    that.writeByte(cmd, callback);
+    that.writeData(cmd, callback);
   };
 
   rom ? this.matchROM(rom, send) : this.skipROM(send);
@@ -109,29 +109,34 @@ DS2482.prototype.searchByFamily = function(family, callback) {
  * Onewire ROM API
  */
 
-function updateCRC(crc, data) {
-  crc = crc ^ data;
+DS2482.ROM_SIZE = 8;
 
-  for (var i = 0; i < 8; i++) {
-    if (crc & 0x01) {
-      crc = (crc >> 1) ^ 0x8C;
-    } else {
-      crc >>= 1;
+DS2482.checkCRC = function(buffer) {
+  var crc = 0;
+
+  for (var i = 0; i < buffer.length; i++) {
+    crc = crc ^ buffer.readUInt8(i);
+
+    for (var j = 0; j < 8; j++) {
+      if (crc & 0x01) {
+        crc = (crc >> 1) ^ 0x8C;
+      } else {
+        crc >>= 1;
+      }
     }
   }
 
-  return crc;
+  return (crc === 0);
 }
 
 DS2482.prototype.searchROM = function(callback) {
-  var rom = new Buffer(8),
-    crc = 0,
+  var rom = new Buffer(DS2482.ROM_SIZE),
     that = this;
 
   this._resetWire(function(err) {
     if (err) { return callback(err); }
 
-    that.writeByte(cmds.ONE_WIRE_SEARCH_ROM, function(err) {
+    that.writeData(cmds.ONE_WIRE_SEARCH_ROM, function(err) {
       if (err) { return callback(err); }
 
       function search(offset, mask, bit, conflict) {
@@ -168,7 +173,6 @@ DS2482.prototype.searchROM = function(callback) {
           mask = mask << 1;
 
           if (mask > 128) {
-            crc = updateCRC(crc, part);
             offset += 1;
             mask = 0x01;
           }
@@ -176,7 +180,10 @@ DS2482.prototype.searchROM = function(callback) {
           if (offset < rom.length) {
             search(offset, mask, bit + 1, conflict);
 
-          } else if (crc !== 0 || rom[0] === 0) {
+          } else if (rom[0] === 0) {
+            callback(new Error('ROM invalid'));
+
+          } else if (!DS2482.checkCRC(rom)) {
             callback(new Error('CRC mismatch'));
 
           } else {
@@ -193,37 +200,27 @@ DS2482.prototype.searchROM = function(callback) {
 };
 
 DS2482.prototype.readROM = function(callback) {
-  var rom = new Buffer(8),
-    crc = 0,
-    that = this;
+  var that = this;
 
   this._resetWire(function(err) {
     if (err) { return callback(err); }
 
-    that.writeByte(cmds.ONE_WIRE_READ_ROM, function(err) {
+    that.writeData(cmds.ONE_WIRE_READ_ROM, function(err) {
       if (err) { return callback(err); }
 
-      function read(offset) {
-        that.readByte(function(err, resp) {
-          if (err) { return callback(err); }
+      that.readData(DS2482.ROM_SIZE, function(err, rom) {
+        if (err) { return callback(err); }
 
-          rom.writeUInt8(resp, offset);
-          crc = updateCRC(crc, resp);
-          offset += 1;
+        if (rom[0] === 0) {
+          callback(new Error('ROM invalid'));
 
-          if (offset < rom.length) {
-            read(offset);
+        } else if (!DS2482.checkCRC(rom)) {
+          callback(new Error('CRC mismatch'));
 
-          } else if (crc !== 0 || rom[0] === 0) {
-            callback(new Error('CRC mismatch'));
-
-          } else {
-            callback(null, rom.toString('hex'));
-          }
-        });
-      }
-
-      read(0);
+        } else {
+          callback(null, rom.toString('hex'));
+        }
+      });
     });
   });
 };
@@ -235,32 +232,17 @@ DS2482.prototype.matchROM = function(rom, callback) {
     rom = new Buffer(rom, 'hex');
   }
 
-  if (rom.length !== 8) {
-    return callback(new Error('Invalid ROM'));
+  if (rom[0] === 0 || rom.length !== DS2482.ROM_SIZE) {
+    return callback(new Error('ROM invalid'));
   }
 
   this._resetWire(function(err) {
     if (err) { return callback(err); }
 
-    that.writeByte(cmds.ONE_WIRE_MATCH_ROM, function(err) {
+    that.writeData(cmds.ONE_WIRE_MATCH_ROM, function(err) {
       if (err) { return callback(err); }
 
-      function write(offset) {
-        that.writeByte(rom.readUInt8(offset), function(err, resp) {
-          if (err) { return callback(err); }
-
-          offset += 1;
-
-          if (offset < rom.length) {
-            write(offset);
-
-          } else {
-            callback(null, resp);
-          }
-        });
-      }
-
-      write(0);
+      that.writeData(rom, callback);
     });
   });
 };
@@ -271,7 +253,7 @@ DS2482.prototype.skipROM = function(callback) {
   this._resetWire(function(err) {
     if (err) { return callback(err); }
 
-    that.writeByte(cmds.ONE_WIRE_SKIP_ROM, callback);
+    that.writeData(cmds.ONE_WIRE_SKIP_ROM, callback);
   });
 };
 
@@ -281,35 +263,71 @@ DS2482.prototype.skipROM = function(callback) {
  * Onewire read/write API
  */
 
-DS2482.prototype.writeByte = function(data, callback) {
+DS2482.prototype.writeData = function(data, callback) {
   var that = this;
+
+  if (!(data instanceof Buffer)) {
+    data = new Buffer(Array.isArray(data) ? data : [data]);
+  }
+
+  function write(offset) {
+    that.i2c.writeBytes(cmds.ONE_WIRE_WRITE_BYTE, data.slice(offset, offset + 1), function(err) {
+      if (err) { return callback(err); }
+
+      that._wait(false, function(err, resp) {
+        if (err) { return callback(err); }
+
+        offset += 1;
+
+        if (offset < data.length) {
+          write(offset);
+
+        } else {
+          callback(null, resp);
+        }
+      });
+    });
+  }
 
   this._wait(true, function(err) {
     if (err) { return callback(err); }
 
-    that.i2c.writeBytes(cmds.ONE_WIRE_WRITE_BYTE, [data], function(err) {
-      if (err) { return callback(err); }
-
-      that._wait(false, callback);
-    });
+    write(0);
   });
 };
 
-DS2482.prototype.readByte = function(callback) {
-  var that = this;
+DS2482.prototype.readData = function(size, callback) {
+  var data = new Buffer(size),
+    that = this;
 
-  this._wait(true, function(err) {
-    if (err) { return callback(err); }
-
+  function read(offset) {
     that.i2c.writeByte(cmds.ONE_WIRE_READ_BYTE, function(err) {
       if (err) { return callback(err); }
 
       that._wait(false, function(err) {
         if (err) { return callback(err); }
 
-        that._readBridge(cmds.REGISTERS.DATA, callback);
+        that._readBridge(cmds.REGISTERS.DATA, function(err, resp) {
+          if (err) { return callback(err); }
+
+          data.writeUInt8(resp, offset);
+          offset += 1;
+
+          if (offset < data.length) {
+            read(offset);
+
+          } else {
+            callback(null , data);
+          }
+        });
       });
     });
+  }
+
+  this._wait(true, function(err) {
+    if (err) { return callback(err); }
+
+    read(0);
   });
 };
 
@@ -448,7 +466,7 @@ DS2482.prototype._wait = function(setPointer, callback) {
       }, 0);
 
     } else {
-      callback(new Error('Timeout'));
+      callback(new Error('Wait timeout'));
     }
   }
 
