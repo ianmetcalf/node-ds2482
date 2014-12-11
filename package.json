@@ -11,8 +11,11 @@
     "url": "https://github.com/ianmetcalf/node-ds2482.git"
   },
   "keywords": [
+    "i2c",
     "ds2482",
-    "onewire"
+    "onewire",
+    "raspberry",
+    "pi"
   ],
   "author": "Ian Metcalf",
   "license": "MIT",
