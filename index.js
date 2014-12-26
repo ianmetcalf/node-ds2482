@@ -334,7 +334,7 @@ DS2482.prototype.readData = function(size, callback) {
 DS2482.prototype.bit = function(setHigh, callback) {
   var that = this;
 
-  if (typeof setHight === 'function') {
+  if (typeof setHigh === 'function') {
     callback = setHigh;
     setHigh = true;
   }
