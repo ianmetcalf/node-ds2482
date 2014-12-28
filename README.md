@@ -1,4 +1,4 @@
-# DS2482
+# DS2482 Onewire Bridge
 
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/ianmetcalf/node-ds2482?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -38,6 +38,7 @@ Checks that the crc in the last byte matches the rest of the buffer
 ### new DS2482([options])
 Creates an interface for a Dallas DS2482 i2c to onewire bridge chip
 
+- `options.i2c` an instance of [i2c](https://github.com/kelly/node-i2c)
 - `options.address` the i2c address of the bridge chip, default: `0x18`
 - `options.device` the location of the i2c interface, default: `/dev/i2c-1`
 
